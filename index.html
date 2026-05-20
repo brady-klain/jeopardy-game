@@ -146,6 +146,7 @@ textarea.fi{resize:vertical;min-height:72px;font-family:'Barlow',sans-serif;font
 #co::backdrop{background:rgba(2,3,20,.9);backdrop-filter:blur(5px)}
 /* #cm removed — styles moved to dialog#co */
 @keyframes pi{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:scale(1)}}
+@keyframes buzzPop{from{opacity:0;transform:scale(.7)}to{opacity:1;transform:scale(1)}}
 .cmm{font-family:'Barlow Condensed',sans-serif;font-size:.7rem;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.36);margin-bottom:.75rem}
 .cmv{font-family:'Anton',sans-serif;font-size:1.65rem;color:var(--gold);margin-bottom:.85rem}.cmv.dv{color:#ffb347}
 #ct{font-family:'Barlow Condensed',sans-serif;font-size:clamp(.95rem,2.5vw,1.7rem);font-weight:600;color:#fff;line-height:1.4;min-height:50px;margin-bottom:1rem}
@@ -487,6 +488,11 @@ textarea.fi{resize:vertical;min-height:72px;font-family:'Barlow',sans-serif;font
   </div>
   <div id="dd-clue-step">
     <div id="ra"></div>
+    <!-- Buzz indicator — shows first buzzer prominently inside the clue modal -->
+    <div id="clue-buzz-indicator" style="display:none;margin-bottom:.9rem;animation:buzzPop .3s cubic-bezier(.34,1.56,.64,1)">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:.72rem;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.45);margin-bottom:.3rem">First Buzz</div>
+      <div id="clue-buzz-name" style="font-family:'Anton',sans-serif;font-size:1.8rem;color:var(--gold);letter-spacing:.06em;text-shadow:2px 2px 0 #7a6000"></div>
+    </div>
     <div class="arw" id="arw"></div>
     <div class="ca">
       <button class="cb ok" onclick="markResult(true)">✓ Correct</button>
@@ -763,8 +769,29 @@ function onBuzz(data){
     const p=G.players.find(p=>p.id===data.id);
     if(p){G.activeId=p.id; document.getElementById('asel').value=p.id;}
     playBuzzSnd();
+    // Show buzz indicator inside the clue modal if it's open
+    updateClueBuzzIndicator();
+    // Highlight the correct player button in the modal
+    document.querySelectorAll('.arw .ab').forEach(b=>{
+      b.classList.toggle('sel', b.textContent.trim()===data.name);
+    });
   }
   renderBQ(); renderSB();
+}
+
+function updateClueBuzzIndicator(){
+  const indicator=document.getElementById('clue-buzz-indicator');
+  const nameEl=document.getElementById('clue-buzz-name');
+  if(!indicator||!nameEl) return;
+  if(G.bq.length>0){
+    nameEl.textContent=G.bq[0].name;
+    // Force animation replay by removing and re-adding
+    indicator.style.display='none';
+    void indicator.offsetWidth;
+    indicator.style.display='block';
+  } else {
+    indicator.style.display='none';
+  }
 }
 function awardBuzz(idx,correct){
   const bz=G.bq[idx]; if(!bz) return;
@@ -857,6 +884,7 @@ function openClue(c,r){
   // Reset modal state
   document.getElementById('ra').style.display='none';
   document.getElementById('ra').textContent='';
+  document.getElementById('clue-buzz-indicator').style.display='none';
   document.getElementById('ddb').classList.toggle('show',isDD);
   document.getElementById('cmm').textContent=G.cats[rnd][c]+' · '+(isDD?'Daily Double':'$'+cell.value.toLocaleString());
   const cv=document.getElementById('cmv');
@@ -948,6 +976,7 @@ function markResult(correct){
 }
 function closeClue(){
   document.getElementById('co').close();
+  document.getElementById('clue-buzz-indicator').style.display='none';
   G.currentClue=null;
   renderBoard();
 }

@@ -333,33 +333,97 @@ textarea.fi{resize:vertical;min-height:72px;font-family:'Barlow',sans-serif;font
   </div>
 </div>
 
-<!-- FINAL JEOPARDY -->
+<!-- FINAL JEOPARDY HOST SCREEN -->
 <div id="fj" class="screen">
   <div class="fjh"><h1>FINAL JEOPARDY!</h1><p>Everything on the line</p></div>
   <div class="fjb">
+
+    <!-- Left: category / clue / answer setup -->
     <div class="fjp">
-      <h2>Category, Clue & Answer</h2>
+      <h2>Setup</h2>
       <div class="f"><label>Category</label><input type="text" id="fjcat" class="fi" placeholder="e.g. American Presidents"></div>
-      <div class="f"><label>Clue (read aloud)</label><textarea id="fjclue" class="fi" placeholder="Enter the Final Jeopardy clue…"></textarea></div>
+      <div class="f"><label>Clue</label><textarea id="fjclue" class="fi" placeholder="Enter the Final Jeopardy clue…"></textarea></div>
       <div class="f"><label>Correct Answer</label><input type="text" id="fjans" class="fi" placeholder="What is…"></div>
-      <div class="fjcb" id="fjcb">Clue appears here after you reveal it</div>
+      <!-- Clue display box (shown after reveal) -->
+      <div class="fjcb" id="fjcb" style="display:none"></div>
       <div class="fjar" id="fjar"></div>
-      <div style="display:flex;gap:.45rem;flex-wrap:wrap">
-        <button class="bm p" onclick="showFjClue()" style="font-size:.82rem;padding:.45rem .95rem;flex:1">Reveal Clue</button>
+      <div style="display:flex;gap:.45rem;flex-wrap:wrap;margin-top:.5rem">
+        <button class="bm p" id="fj-reveal-btn" onclick="hostRevealFjClue()" style="font-size:.82rem;padding:.45rem .95rem;flex:1">Reveal Clue to Players</button>
         <button class="bm s" onclick="showFjAns()" style="font-size:.82rem;padding:.45rem .95rem;flex:1">Reveal Answer</button>
       </div>
     </div>
+
+    <!-- Right: wagers, submitted answers, results -->
     <div class="fjp">
-      <h2>Wagers & Results</h2>
+      <h2>Player Wagers & Answers</h2>
+      <!-- Phase indicator -->
+      <div id="fj-phase-label" style="font-family:'Barlow Condensed',sans-serif;font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,215,0,.7);margin-bottom:.6rem">⏳ Waiting for players to submit wagers…</div>
       <div class="wrl" id="wrl"></div>
       <div style="margin:.85rem 0;border-top:1px solid rgba(255,255,255,.07);padding-top:.85rem">
-        <div style="font-family:'Barlow Condensed',sans-serif;font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:.4rem">Mark Results</div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:.45rem">Mark Results</div>
         <div class="rrl" id="rrl"></div>
       </div>
     </div>
+
     <div class="fjf">
       <button class="bm s" onclick="SS('game')" style="font-size:.82rem;padding:.48rem 1rem">← Back</button>
       <button class="bm p" onclick="endGame()" style="font-size:.82rem;padding:.48rem 1.2rem">🏆 Final Scores →</button>
+    </div>
+  </div>
+</div>
+
+<!-- FINAL JEOPARDY PLAYER SCREEN -->
+<div id="fj-player" class="screen">
+  <div style="background:radial-gradient(ellipse at 50% 0%,#1a0840,#02031a 65%);min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:1.5rem 1rem env(safe-area-inset-bottom,1.5rem)">
+
+    <!-- Header -->
+    <div style="text-align:center;width:100%;max-width:420px">
+      <div style="font-family:'Anton',sans-serif;font-size:1.8rem;color:var(--red);letter-spacing:.06em;text-shadow:2px 2px 0 #7a0010;margin-bottom:.2rem">FINAL JEOPARDY!</div>
+      <div id="fj-p-room" style="font-family:'Barlow Condensed',sans-serif;font-size:.7rem;letter-spacing:.22em;text-transform:uppercase;color:rgba(255,255,255,.26)">ROOM: —</div>
+    </div>
+
+    <!-- Main content area — switches between phases -->
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;max-width:420px;gap:1rem;padding:1rem 0">
+
+      <!-- PHASE 1: Wager input -->
+      <div id="fj-p-wager-phase">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:.88rem;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.4);text-align:center;margin-bottom:.5rem">Enter Your Wager</div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:.75rem;color:rgba(255,255,255,.3);text-align:center;margin-bottom:1rem">
+          Your score: <span id="fj-p-score-display" style="color:var(--gold);font-family:'Anton',sans-serif;font-size:1rem">$0</span>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:.8rem">
+          <input type="number" id="fj-p-wager-input" placeholder="0" min="0" style="background:rgba(255,255,255,.1);border:2px solid var(--gold);border-radius:var(--r);color:#fff;font-family:'Anton',sans-serif;font-size:2rem;padding:.5rem .8rem;width:200px;text-align:center;outline:none">
+          <div id="fj-p-wager-max" style="font-family:'Barlow Condensed',sans-serif;font-size:.72rem;color:rgba(255,255,255,.35);letter-spacing:.08em;text-transform:uppercase"></div>
+          <button onclick="submitFjWager()" style="background:var(--gold);color:#1a0000;font-family:'Anton',sans-serif;font-size:1.1rem;letter-spacing:.08em;padding:.7rem 2rem;border-radius:var(--r);border:none;cursor:pointer;width:200px">Lock In Wager →</button>
+        </div>
+        <div id="fj-p-wager-submitted" style="display:none;text-align:center;margin-top:1rem">
+          <div style="font-family:'Anton',sans-serif;font-size:1.4rem;color:var(--green)">✓ Wager Locked!</div>
+          <div id="fj-p-wager-conf" style="font-family:'Barlow Condensed',sans-serif;font-size:.9rem;color:rgba(255,255,255,.5);margin-top:.3rem"></div>
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:.78rem;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-top:.5rem">Waiting for clue…</div>
+        </div>
+      </div>
+
+      <!-- PHASE 2: Answer input (shown after host reveals clue) -->
+      <div id="fj-p-answer-phase" style="display:none;width:100%">
+        <div id="fj-p-cat" style="font-family:'Barlow Condensed',sans-serif;font-size:.78rem;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,100,100,.8);text-align:center;margin-bottom:.5rem"></div>
+        <div id="fj-p-clue" style="background:rgba(6,12,233,.25);border:2px solid rgba(6,12,233,.6);border-radius:10px;padding:1rem;font-family:'Barlow Condensed',sans-serif;font-size:clamp(1rem,4vw,1.4rem);font-weight:600;color:#fff;line-height:1.4;text-align:center;margin-bottom:1rem;min-height:80px;display:flex;align-items:center;justify-content:center"></div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:.78rem;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.4);text-align:center;margin-bottom:.5rem">Your Answer</div>
+        <textarea id="fj-p-answer-input" placeholder="What is…" rows="3" style="width:100%;background:rgba(255,255,255,.1);border:2px solid rgba(255,255,255,.25);border-radius:var(--r);color:#fff;font-family:'Barlow Condensed',sans-serif;font-size:1.1rem;padding:.65rem .85rem;resize:none;outline:none;transition:border-color .2s;line-height:1.4" onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='rgba(255,255,255,.25)'"></textarea>
+        <button onclick="submitFjAnswer()" id="fj-p-submit-btn" style="background:var(--gold);color:#1a0000;font-family:'Anton',sans-serif;font-size:1.1rem;letter-spacing:.08em;padding:.7rem 2rem;border-radius:var(--r);border:none;cursor:pointer;width:100%;margin-top:.7rem">Submit Answer →</button>
+        <div id="fj-p-answer-submitted" style="display:none;text-align:center;margin-top:.8rem">
+          <div style="font-family:'Anton',sans-serif;font-size:1.3rem;color:var(--green)">✓ Answer Submitted!</div>
+          <div id="fj-p-answer-conf" style="font-family:'Barlow Condensed',sans-serif;font-size:.85rem;color:rgba(255,255,255,.5);margin-top:.25rem;font-style:italic"></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Score bar -->
+    <div style="width:100%;max-width:420px">
+      <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);border-radius:var(--r);padding:.62rem .95rem">
+        <span id="fj-p-name" style="font-family:'Barlow Condensed',sans-serif;font-size:.92rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.62)">—</span>
+        <span id="fj-p-score" style="font-family:'Anton',sans-serif;font-size:1.5rem;color:var(--gold)">$0</span>
+      </div>
     </div>
   </div>
 </div>
@@ -595,8 +659,10 @@ async function startGame(){
     _hChan = _hAbly.channels.get('jeopardy-'+room.toLowerCase());
 
     // Subscribe to messages from players
-    _hChan.subscribe('player-join', msg => onPlayerJoin(msg.data));
-    _hChan.subscribe('player-buzz', msg => onBuzz(msg.data));
+    _hChan.subscribe('player-join',  msg => onPlayerJoin(msg.data));
+    _hChan.subscribe('player-buzz',  msg => onBuzz(msg.data));
+    _hChan.subscribe('fj-wager',     msg => onFjWager(msg.data));
+    _hChan.subscribe('fj-answer',    msg => onFjAnswer(msg.data));
 
     showCov(false);
     toast('Connected! Click ⬡ Share to invite players.');
@@ -927,30 +993,113 @@ function closeShare(){document.getElementById('sho').classList.remove('open');}
 
 // ── Final Jeopardy ──
 let fjW={},fjD={};
+// fjW = wagers by player id, fjD = done flags, fjAnswers = submitted answers
+let fjAnswers={};
+
 function launchFJ(){
-  fjW={};fjD={};G.players.forEach(p=>{fjW[p.id]=0;fjD[p.id]=false;});
+  fjW={};fjD={};fjAnswers={};
+  G.players.forEach(p=>{fjW[p.id]=0;fjD[p.id]=false;fjAnswers[p.id]=null;});
+
+  // Build wager rows (host sees wagers come in live)
   document.getElementById('wrl').innerHTML=G.players.map(p=>{
-    const s=G.scores[p.id]||0,neg=s<0,max=Math.max(s,0);
-    return `<div class="wr"><span class="wrn" style="color:${p.color}">${esc(p.name)}</span><span class="wrs${neg?' neg':''}">${neg?'-':''}$${Math.abs(s).toLocaleString()}</span><input class="wri" type="number" id="fw-${p.id}" placeholder="0" min="0" max="${max}" value="0" oninput="setWager('${p.id}',this.value)"></div>`;
+    const s=G.scores[p.id]||0,neg=s<0;
+    return `<div class="wr" id="wr-${p.id}">
+      <span class="wrn" style="color:${p.color}">${esc(p.name)}</span>
+      <span class="wrs${neg?' neg':''}">${neg?'-':''}$${Math.abs(s).toLocaleString()}</span>
+      <span id="wager-status-${p.id}" style="font-family:'Barlow Condensed',sans-serif;font-size:.72rem;color:rgba(255,255,255,.3);letter-spacing:.06em">waiting…</span>
+    </div>`;
   }).join('');
+
+  // Build results rows (host marks correct/wrong + shows submitted answer)
   document.getElementById('rrl').innerHTML=G.players.map(p=>
-    `<div class="rr" id="rr-${p.id}"><span class="rrn" style="color:${p.color}">${esc(p.name)}</span><span class="rrw" id="rw-${p.id}">Wager: $0</span><div class="rrbs"><button class="rrbt c" onclick="markFJ('${p.id}',true)">✓ Correct</button><button class="rrbt w" onclick="markFJ('${p.id}',false)">✕ Wrong</button></div></div>`
+    `<div class="rr" id="rr-${p.id}">
+      <div style="flex:1;min-width:0">
+        <div class="rrn" style="color:${p.color}">${esc(p.name)}</div>
+        <div id="rr-answer-${p.id}" style="font-family:'Barlow Condensed',sans-serif;font-size:.72rem;color:rgba(255,255,255,.4);margin-top:.12rem;font-style:italic">No answer yet</div>
+      </div>
+      <span class="rrw" id="rw-${p.id}">$0</span>
+      <div class="rrbs" id="rrbs-${p.id}">
+        <button class="rrbt c" onclick="markFJ('${p.id}',true)">✓</button>
+        <button class="rrbt w" onclick="markFJ('${p.id}',false)">✕</button>
+      </div>
+    </div>`
   ).join('');
-  document.getElementById('fjcb').textContent='Clue appears here after you reveal it';
+
+  // Reset clue display
+  document.getElementById('fjcb').style.display='none';
+  document.getElementById('fjcb').textContent='';
   document.getElementById('fjar').style.display='none';
-  document.getElementById('fjcat').value=''; document.getElementById('fjclue').value=''; document.getElementById('fjans').value='';
+  document.getElementById('fjcat').value='';
+  document.getElementById('fjclue').value='';
+  document.getElementById('fjans').value='';
+  document.getElementById('fj-phase-label').textContent='⏳ Waiting for players to submit wagers…';
+  document.getElementById('fj-reveal-btn').disabled=false;
+  document.getElementById('fj-reveal-btn').textContent='Reveal Clue to Players';
+
+  // Tell players to go to FJ screen (wager phase)
+  toAll('fj-start', {scores: Object.fromEntries(G.players.map(p=>[p.id,G.scores[p.id]||0]))});
+
   SS('fj');
 }
-function setWager(id,val){const max=Math.max(G.scores[id]||0,0),w=Math.min(Math.max(+val||0,0),max);fjW[id]=w;document.getElementById('rw-'+id).textContent='Wager: $'+w.toLocaleString();}
-function showFjClue(){const cat=document.getElementById('fjcat').value.trim()||'Final Jeopardy',clue=document.getElementById('fjclue').value.trim()||'[No clue]';document.getElementById('fjcb').textContent=cat+': '+clue;toAll('fj-clue',{cat,clue});}
-function showFjAns(){const ans=document.getElementById('fjans').value.trim()||'(No answer)';const el=document.getElementById('fjar');el.textContent='Answer: '+ans;el.style.display='block';}
+
+function hostRevealFjClue(){
+  const cat=document.getElementById('fjcat').value.trim()||'Final Jeopardy';
+  const clue=document.getElementById('fjclue').value.trim()||'[No clue entered]';
+  // Show clue on host screen
+  const cb=document.getElementById('fjcb');
+  cb.textContent=cat.toUpperCase()+': '+clue;
+  cb.style.display='flex';
+  // Update phase label
+  document.getElementById('fj-phase-label').textContent='📝 Clue revealed — waiting for answers…';
+  document.getElementById('fj-reveal-btn').disabled=true;
+  document.getElementById('fj-reveal-btn').textContent='Clue Revealed ✓';
+  // Send clue to players — triggers answer phase on their phones
+  toAll('fj-clue',{cat,clue});
+}
+
+function showFjAns(){
+  const ans=document.getElementById('fjans').value.trim()||'(No answer set)';
+  const el=document.getElementById('fjar');
+  el.textContent='Correct Answer: '+ans;
+  el.style.display='block';
+}
+
+// Called when host receives a wager from a player
+function onFjWager(data){
+  fjW[data.id]=data.wager;
+  const el=document.getElementById('wager-status-'+data.id);
+  if(el) el.innerHTML=`<span style="color:var(--green)">✓ $${data.wager.toLocaleString()}</span>`;
+  // Update results row wager display
+  const rw=document.getElementById('rw-'+data.id);
+  if(rw) rw.textContent='$'+data.wager.toLocaleString();
+  // Check if all wagers in
+  const allIn=G.players.every(p=>fjW[p.id]!==undefined&&fjW[p.id]!==null&&fjW[p.id]>=0&&document.getElementById('wager-status-'+p.id)&&document.getElementById('wager-status-'+p.id).querySelector('span'));
+  if(G.players.length>0&&G.players.every(p=>fjW[p.id]>0||document.getElementById('wager-status-'+p.id)?.textContent.includes('✓'))){
+    document.getElementById('fj-phase-label').textContent='✓ All wagers in — you can now reveal the clue!';
+  }
+}
+
+// Called when host receives a submitted answer from a player
+function onFjAnswer(data){
+  fjAnswers[data.id]=data.answer;
+  const el=document.getElementById('rr-answer-'+data.id);
+  if(el) el.textContent='"'+data.answer+'"';
+  // Flash the row to draw attention
+  const row=document.getElementById('rr-'+data.id);
+  if(row){row.style.background='rgba(255,215,0,.1)';setTimeout(()=>row.style.background='',1500);}
+  const p=G.players.find(p=>p.id===data.id);
+  toast('📝 '+(p?p.name:'Player')+' submitted their answer');
+}
+
 function markFJ(id,correct){
   const w=fjW[id]||0;
   if(correct)G.scores[id]=(G.scores[id]||0)+w; else G.scores[id]=(G.scores[id]||0)-w;
   fjD[id]=true;
-  document.getElementById('rr-'+id).querySelector('.rrbs').innerHTML=`<button class="rrbt dn">${correct?'✓':'✕'} (${correct?'+':'-'}$${w.toLocaleString()})</button>`;
+  document.getElementById('rrbs-'+id).innerHTML=
+    `<button class="rrbt dn">${correct?'✓':'✕'} (${correct?'+':'-'}$${w.toLocaleString()})</button>`;
   toAll('score-update',{id,score:G.scores[id],correct});
-  const p=G.players.find(p=>p.id===id); toast((correct?'✓ +':'✗ -')+'$'+w.toLocaleString()+' → '+(p?p.name:'player'));
+  const p=G.players.find(p=>p.id===id);
+  toast((correct?'✓ +':'✗ -')+'$'+w.toLocaleString()+' → '+(p?p.name:'player'));
 }
 
 // ── Results ──
@@ -1005,7 +1154,8 @@ async function doJoin(){
     _pChan.subscribe('reset',        ()=> { _myBuzzed=false; setPS(_myLocked?'locked':'ready'); });
     _pChan.subscribe('game-state',   msg=>{ if(msg.data.forId===_myId||!msg.data.forId){ _myLocked=msg.data.locked; setPS(msg.data.locked?'locked':'ready'); }});
     _pChan.subscribe('score-update', msg=>{ if(msg.data.id===_myId){ _myScore=msg.data.score; updatePScore(); if(msg.data.correct===true){setPS('correct');setTimeout(()=>setPS(_myLocked?'locked':'ready'),2000);}else if(msg.data.correct===false){setPS('wrong');setTimeout(()=>setPS(_myLocked?'locked':'ready'),1600);}}});
-    _pChan.subscribe('fj-clue',      msg=>{ toast('Final Jeopardy: '+msg.data.cat); });
+    _pChan.subscribe('fj-start', msg=>{ showFjPlayerWagerPhase(msg.data); });
+    _pChan.subscribe('fj-clue',  msg=>{ showFjPlayerAnswerPhase(msg.data); });
 
     // Announce to host — Ably pub/sub means this just works, no special channel needed
     _pChan.attach(()=>{
@@ -1027,6 +1177,64 @@ function announceToHost(){
   _pChan.publish('player-join', {id:_myId, name:_myName, colorIdx})
     .then(()=> console.log('Join announced to host'))
     .catch(e => console.warn('Join announce failed:', e));
+}
+
+// ── Final Jeopardy player flow ──
+
+function showFjPlayerWagerPhase(data){
+  // Switch player to FJ wager screen
+  const score=data.scores&&data.scores[_myId]!==undefined?data.scores[_myId]:_myScore;
+  const neg=score<0;
+  document.getElementById('fj-p-room').textContent='ROOM: '+_myRoom;
+  document.getElementById('fj-p-name').textContent=_myName;
+  document.getElementById('fj-p-score').textContent=(neg?'-':'')+'$'+Math.abs(score).toLocaleString();
+  document.getElementById('fj-p-score-display').textContent=(neg?'-':'')+'$'+Math.abs(score).toLocaleString();
+  const maxW=Math.max(score,0);
+  document.getElementById('fj-p-wager-input').value=Math.min(score,score)||0;
+  document.getElementById('fj-p-wager-input').max=maxW;
+  document.getElementById('fj-p-wager-max').textContent='max $'+maxW.toLocaleString();
+  document.getElementById('fj-p-wager-phase').style.display='block';
+  document.getElementById('fj-p-answer-phase').style.display='none';
+  document.getElementById('fj-p-wager-submitted').style.display='none';
+  SS('fj-player');
+}
+
+function submitFjWager(){
+  const maxW=Math.max(_myScore,0);
+  const raw=+document.getElementById('fj-p-wager-input').value||0;
+  const wager=Math.min(Math.max(raw,0),maxW);
+  // Show confirmation
+  document.getElementById('fj-p-wager-input').disabled=true;
+  document.getElementById('fj-p-wager-submitted').style.display='block';
+  document.getElementById('fj-p-wager-conf').textContent='You wagered $'+wager.toLocaleString();
+  document.querySelector('#fj-p-wager-phase button').style.display='none';
+  // Send wager to host
+  _pChan.publish('fj-wager',{id:_myId, name:_myName, wager})
+    .catch(e=>console.warn('fj-wager publish failed:',e));
+}
+
+function showFjPlayerAnswerPhase(data){
+  document.getElementById('fj-p-cat').textContent=data.cat.toUpperCase();
+  document.getElementById('fj-p-clue').textContent=data.clue;
+  document.getElementById('fj-p-answer-phase').style.display='block';
+  document.getElementById('fj-p-wager-phase').style.display='none';
+  document.getElementById('fj-p-answer-submitted').style.display='none';
+  document.getElementById('fj-p-answer-input').value='';
+  document.getElementById('fj-p-answer-input').disabled=false;
+  document.getElementById('fj-p-submit-btn').style.display='block';
+  // Focus answer field
+  setTimeout(()=>document.getElementById('fj-p-answer-input').focus(),200);
+}
+
+function submitFjAnswer(){
+  const answer=document.getElementById('fj-p-answer-input').value.trim()||'(No answer)';
+  document.getElementById('fj-p-answer-input').disabled=true;
+  document.getElementById('fj-p-submit-btn').style.display='none';
+  document.getElementById('fj-p-answer-submitted').style.display='block';
+  document.getElementById('fj-p-answer-conf').textContent='"'+answer+'"';
+  // Send answer to host
+  _pChan.publish('fj-answer',{id:_myId, name:_myName, answer})
+    .catch(e=>console.warn('fj-answer publish failed:',e));
 }
 
 function doBuzz(e){

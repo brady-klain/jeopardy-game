@@ -492,8 +492,8 @@ textarea.fi{resize:vertical;min-height:72px;font-family:'Barlow',sans-serif;font
       <div id="ra"></div>
       <div class="arw" id="arw"></div>
       <div class="ca">
-        <button class="cb ok" onclick="markResult(true)">✓ Correct</button>
-        <button class="cb no" onclick="markResult(false)">✕ Wrong</button>
+        <button class="cb ok" onclick="markResult(true); document.getElementById('co').classList.remove('open');">✓ Correct</button>
+        <button class="cb no" onclick="markResult(false); document.getElementById('co').classList.remove('open');">✕ Wrong</button>
         <button class="cb nt" onclick="closeClue()">Skip</button>
       </div>
     </div>
@@ -891,7 +891,9 @@ ${G.cats[rnd][c]} · $${cell.value.toLocaleString()}`;
     document.getElementById('dd-clue-step').style.display='block';
   }
 
-  document.getElementById('co').classList.add('open');
+  var coEl=document.getElementById('co');
+  coEl.style.display='';
+  coEl.classList.add('open');
   setLock(false);
 }
 
@@ -930,24 +932,31 @@ function markResult(correct){
   if(ap) toAll('score-update',{id:ap.id, score:G.scores[ap.id], correct});
   toast((correct?'✓ +':'✗ -')+'$'+value.toLocaleString()+' → '+(ap?ap.name:'player'));
 
-  // Mark tile used
+  // Mark tile used in data
   G.boards[G.round][tileC][tileR].used=true;
   G.bq=[];
   G.currentClue=null;
 
-  // Close modal immediately
-  document.getElementById('co').classList.remove('open');
+  // 1. Close the modal — both remove class AND force display:none
+  var coEl=document.getElementById('co');
+  coEl.classList.remove('open');
+  coEl.style.display='none';
 
-  // Re-render board so tile disappears
+  // 2. Re-render the board so the tile goes blank
   renderBoard();
 
-  // Update UI
+  // 3. Update sidebar and buzz bar
   setLock(true);
   renderSB();
   renderBQ();
   checkRoundOver();
 }
-function closeClue(){document.getElementById('co').classList.remove('open'); G.currentClue=null; renderBoard();}
+function closeClue(){
+  var el=document.getElementById('co');
+  if(el){ el.classList.remove('open'); el.style.display='none'; }
+  G.currentClue=null;
+  renderBoard();
+}
 
 // ── Edit ──
 function openEdit(){editRound=G.round; buildEditTabs(); buildEditContent(editRound); document.getElementById('eo').classList.add('open');}

@@ -142,8 +142,9 @@ textarea.fi{resize:vertical;min-height:72px;font-family:'Barlow',sans-serif;font
 .fjf{grid-column:1/-1;display:flex;justify-content:center;gap:.7rem;flex-wrap:wrap;margin-top:.2rem}
 
 /* CLUE MODAL */
-#co{display:none;position:fixed;inset:0;background:rgba(2,3,20,.9);z-index:100;align-items:center;justify-content:center;backdrop-filter:blur(5px)}
-#cm{background:var(--blue);border:3px solid var(--gold);border-radius:14px;box-shadow:0 0 60px rgba(255,215,0,.2);max-width:640px;width:92vw;padding:1.6rem 1.9rem;text-align:center;animation:pi .24s cubic-bezier(.34,1.56,.64,1)}
+#co{border:3px solid var(--gold);border-radius:14px;background:var(--blue);max-width:640px;width:92vw;padding:1.6rem 1.9rem;text-align:center;color:var(--white)}
+#co::backdrop{background:rgba(2,3,20,.9);backdrop-filter:blur(5px)}
+/* #cm removed — styles moved to dialog#co */
 @keyframes pi{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:scale(1)}}
 .cmm{font-family:'Barlow Condensed',sans-serif;font-size:.7rem;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.36);margin-bottom:.75rem}
 .cmv{font-family:'Anton',sans-serif;font-size:1.65rem;color:var(--gold);margin-bottom:.85rem}.cmv.dv{color:#ffb347}
@@ -470,34 +471,30 @@ textarea.fi{resize:vertical;min-height:72px;font-family:'Barlow',sans-serif;font
 </div>
 
 <!-- CLUE MODAL -->
-<div id="co">
-  <div id="cm">
-    <div class="ddb" id="ddb">DAILY DOUBLE!</div>
-    <div class="cmm" id="cmm"></div><div class="cmv" id="cmv"></div>
-    <div id="ct"></div>
-    <!-- DD Step 1: wager (shown before clue for daily doubles) -->
-    <div id="dd-wager-step" style="display:none">
-      <div style="font-family:'Barlow Condensed',sans-serif;font-size:.85rem;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.5);margin-bottom:.5rem">Your Wager</div>
-      <div style="display:flex;align-items:center;justify-content:center;gap:.6rem;margin-bottom:1rem">
-        <input type="number" id="ddw" placeholder="0" min="0" step="100"
-          style="background:rgba(255,255,255,.1);border:2px solid var(--gold);border-radius:var(--r);color:#fff;font-family:'Anton',sans-serif;font-size:1.5rem;padding:.4rem .8rem;width:150px;text-align:center;outline:none">
-        <span id="dd-max" style="font-family:'Barlow Condensed',sans-serif;font-size:.72rem;color:rgba(255,255,255,.35);letter-spacing:.08em;text-transform:uppercase"></span>
-      </div>
-      <button class="cb ok" onclick="revealDDClue()" style="min-width:160px">Reveal Clue →</button>
+<dialog id="co" style="background:var(--blue);border:3px solid var(--gold);border-radius:14px;box-shadow:0 0 60px rgba(255,215,0,.2);max-width:640px;width:92vw;padding:1.6rem 1.9rem;text-align:center;color:var(--white)">
+  <div class="ddb" id="ddb">DAILY DOUBLE!</div>
+  <div class="cmm" id="cmm"></div>
+  <div class="cmv" id="cmv"></div>
+  <div id="ct"></div>
+  <div id="dd-wager-step" style="display:none">
+    <div style="font-family:'Barlow Condensed',sans-serif;font-size:.85rem;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.5);margin-bottom:.5rem">Your Wager</div>
+    <div style="display:flex;align-items:center;justify-content:center;gap:.6rem;margin-bottom:1rem">
+      <input type="number" id="ddw" placeholder="0" min="0" step="100"
+        style="background:rgba(255,255,255,.1);border:2px solid var(--gold);border-radius:var(--r);color:#fff;font-family:'Anton',sans-serif;font-size:1.5rem;padding:.4rem .8rem;width:150px;text-align:center;outline:none">
+      <span id="dd-max" style="font-family:'Barlow Condensed',sans-serif;font-size:.72rem;color:rgba(255,255,255,.35);letter-spacing:.08em;text-transform:uppercase"></span>
     </div>
-
-    <!-- DD Step 2 / Regular clue: clue text + buttons (shown after wager) -->
-    <div id="dd-clue-step">
-      <div id="ra"></div>
-      <div class="arw" id="arw"></div>
-      <div class="ca">
-        <button class="cb ok" onclick="markResult(true);">✓ Correct</button>
-        <button class="cb no" onclick="markResult(false);">✕ Wrong</button>
-        <button class="cb nt" onclick="closeClue()">Skip</button>
-      </div>
+    <button class="cb ok" onclick="revealDDClue()" style="min-width:160px">Reveal Clue →</button>
+  </div>
+  <div id="dd-clue-step">
+    <div id="ra"></div>
+    <div class="arw" id="arw"></div>
+    <div class="ca">
+      <button class="cb ok" onclick="markResult(true)">✓ Correct</button>
+      <button class="cb no" onclick="markResult(false)">✕ Wrong</button>
+      <button class="cb nt" onclick="closeClue()">Skip</button>
     </div>
   </div>
-</div>
+</dialog>
 
 <!-- EDIT MODAL -->
 <div id="eo">
@@ -890,7 +887,7 @@ ${G.cats[rnd][c]} · $${cell.value.toLocaleString()}`;
     document.getElementById('dd-clue-step').style.display='block';
   }
 
-  document.getElementById('co').style.display='flex';
+  document.getElementById('co').showModal();
   setLock(false);
 }
 
@@ -935,7 +932,7 @@ function markResult(correct){
   G.currentClue=null;
 
   // 1. Close the modal
-  document.getElementById('co').style.display='none';
+  document.getElementById('co').close();
 
   // 2. Re-render the board so the tile goes blank
   renderBoard();
@@ -947,7 +944,7 @@ function markResult(correct){
   checkRoundOver();
 }
 function closeClue(){
-  document.getElementById('co').style.display='none';
+  document.getElementById('co').close();
   G.currentClue=null;
   renderBoard();
 }

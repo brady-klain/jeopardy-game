@@ -492,8 +492,8 @@ textarea.fi{resize:vertical;min-height:72px;font-family:'Barlow',sans-serif;font
       <div id="ra"></div>
       <div class="arw" id="arw"></div>
       <div class="ca">
-        <button class="cb ok" onclick="markResult(true); document.getElementById('co').classList.remove('open');">✓ Correct</button>
-        <button class="cb no" onclick="markResult(false); document.getElementById('co').classList.remove('open');">✕ Wrong</button>
+        <button class="cb ok" onclick="alert('correct clicked'); markResult(true);">✓ Correct</button>
+        <button class="cb no" onclick="alert('wrong clicked'); markResult(false);">✕ Wrong</button>
         <button class="cb nt" onclick="closeClue()">Skip</button>
       </div>
     </div>

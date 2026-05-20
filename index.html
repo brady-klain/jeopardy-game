@@ -284,6 +284,13 @@ textarea.fi{resize:vertical;min-height:72px;font-family:'Barlow',sans-serif;font
       <h2>Round 1 Categories <span style="color:rgba(255,255,255,.22);font-size:.8em;font-weight:400">(DJ editable in-game)</span></h2>
       <div class="cats-g" id="cats-grid"></div>
     </div>
+    <div class="card">
+      <h2>Final Jeopardy <span style="color:rgba(255,255,255,.3);font-size:.8em;font-weight:400">(optional — can also be set in-game)</span></h2>
+      <div class="f"><label>Category</label><input type="text" id="fj-setup-cat" placeholder="e.g. American History"></div>
+      <div class="f"><label>Clue</label><textarea id="fj-setup-clue" style="width:100%;background:rgba(255,255,255,.07);border:1px solid var(--pb);border-radius:var(--r);color:var(--white);font-family:'Barlow',sans-serif;font-size:.88rem;padding:.5rem .72rem;resize:vertical;min-height:70px;transition:border-color .2s" placeholder="Enter the Final Jeopardy clue…" onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor=''"></textarea></div>
+      <div class="f"><label>Correct Answer</label><input type="text" id="fj-setup-ans" placeholder="What is…"></div>
+    </div>
+
     <div class="sfoot">
       <button class="bm s" onclick="loadDemo()">Load Demo</button>
       <button class="bm p" onclick="startGame()">Launch Host Dashboard →</button>
@@ -903,35 +910,49 @@ ${G.cats[G.round][c]} · $${cell.value.toLocaleString()}`;
 function getCV(){const{c,r}=G.currentClue,cell=G.boards[G.round][c][r];return cell.dailyDouble?(+document.getElementById('ddw').value||cell.value):cell.value;}
 function markResult(correct){
   if(!G.activeId){toast('Select a player first');return;}
-  const{c,r}=G.currentClue, value=getCV(), modal=document.getElementById('cm');
+  if(!G.currentClue){return;}
+  const{c,r}=G.currentClue, value=getCV();
+
+  // Update scores
   if(correct){
     G.scores[G.activeId]=(G.scores[G.activeId]||0)+value;
     G.streaks[G.activeId]=(G.streaks[G.activeId]||0)+1;
     G.players.forEach(p=>{if(p.id!==G.activeId)G.streaks[p.id]=0;});
-    modal.classList.add('cfl'); setTimeout(()=>modal.classList.remove('cfl'),400);
   } else {
     if(G.penalty==='full') G.scores[G.activeId]=(G.scores[G.activeId]||0)-value;
     else if(G.penalty==='half') G.scores[G.activeId]=(G.scores[G.activeId]||0)-Math.floor(value/2);
     G.streaks[G.activeId]=0;
-    modal.classList.add('wfl'); setTimeout(()=>modal.classList.remove('wfl'),400);
   }
+
+  // Notify players of score change
   const ap=G.players.find(p=>p.id===G.activeId);
   if(ap) toAll('score-update',{id:ap.id, score:G.scores[ap.id], correct});
   toast((correct?'✓ +':'✗ -')+'$'+value.toLocaleString()+' → '+(ap?ap.name:'player'));
 
-  // Mark tile used and close modal instantly — no delay
+  // Mark tile as used in game state
   G.boards[G.round][c][r].used=true;
-  G.bq=[]; G.currentClue=null;
+  G.bq=[];
+  G.currentClue=null;
 
-  // Immediately blank the used tile on the board without full re-render
-  const tile=document.querySelector(`#bd .vt[data-c="${c}"][data-r="${r}"]`);
-  if(tile){ tile.classList.add('used'); tile.textContent=''; tile.removeEventListener('click',tile._openClue); }
-
-  // Close modal right away
+  // Close modal immediately
   document.getElementById('co').classList.remove('open');
 
+  // Update the tile on the board directly (fast, no full re-render flicker)
+  const tile=document.querySelector('#bd .vt[data-c="'+c+'"][data-r="'+r+'"]');
+  if(tile){
+    tile.classList.remove('act');
+    tile.classList.add('used');
+    tile.textContent='';
+    tile.style.cursor='default';
+    // Remove click listener by replacing the node
+    const clone=tile.cloneNode(false);
+    tile.parentNode.replaceChild(clone,tile);
+  }
+
   setLock(true);
-  renderBoard(); renderSB(); renderBQ(); checkRoundOver();
+  renderSB();
+  renderBQ();
+  checkRoundOver();
 }
 function closeClue(){document.getElementById('co').classList.remove('open'); G.currentClue=null; renderBoard();}
 
@@ -1029,9 +1050,13 @@ function launchFJ(){
   document.getElementById('fjcb').style.display='none';
   document.getElementById('fjcb').textContent='';
   document.getElementById('fjar').style.display='none';
-  document.getElementById('fjcat').value='';
-  document.getElementById('fjclue').value='';
-  document.getElementById('fjans').value='';
+  // Pre-fill from setup screen if provided
+  const setupCat=document.getElementById('fj-setup-cat');
+  const setupClue=document.getElementById('fj-setup-clue');
+  const setupAns=document.getElementById('fj-setup-ans');
+  document.getElementById('fjcat').value=(setupCat&&setupCat.value.trim())||'';
+  document.getElementById('fjclue').value=(setupClue&&setupClue.value.trim())||'';
+  document.getElementById('fjans').value=(setupAns&&setupAns.value.trim())||'';
   document.getElementById('fj-phase-label').textContent='⏳ Waiting for players to submit wagers…';
   document.getElementById('fj-reveal-btn').disabled=false;
   document.getElementById('fj-reveal-btn').textContent='Reveal Clue to Players';

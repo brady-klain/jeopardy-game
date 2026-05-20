@@ -680,7 +680,10 @@ async function startGame(){
 // Publish from host to all players
 function toAll(event, data){
   if(!_hChan) return;
-  _hChan.publish(event, data).catch(e=> console.warn('publish failed:', e));
+  try{
+    var result=_hChan.publish(event, data);
+    if(result && typeof result.catch==='function') result.catch(function(e){console.warn('publish failed:',e);});
+  } catch(e){ console.warn('toAll error:',e); }
 }
 
 // ── Player joins → auto-populate scoreboard ──

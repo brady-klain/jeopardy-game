@@ -930,18 +930,18 @@ function markResult(correct){
   if(ap) toAll('score-update',{id:ap.id, score:G.scores[ap.id], correct});
   toast((correct?'✓ +':'✗ -')+'$'+value.toLocaleString()+' → '+(ap?ap.name:'player'));
 
-  // Mark tile used in data
+  // Mark tile used
   G.boards[G.round][tileC][tileR].used=true;
   G.bq=[];
   G.currentClue=null;
 
-  // 1. Close the modal
+  // Close modal immediately
   document.getElementById('co').classList.remove('open');
 
-  // 2. Re-render the board so the tile goes blank
+  // Re-render board so tile disappears
   renderBoard();
 
-  // 3. Update sidebar and buzz bar
+  // Update UI
   setLock(true);
   renderSB();
   renderBQ();

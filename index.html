@@ -252,6 +252,8 @@ textarea.fi{resize:vertical;min-height:72px;font-family:'Barlow',sans-serif;font
 ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:3px}
 @media(max-width:680px){#sb{display:none}}
 </style>
+  <!-- SheetJS for Excel parsing -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -290,6 +292,20 @@ textarea.fi{resize:vertical;min-height:72px;font-family:'Barlow',sans-serif;font
       <div class="f"><label>Category</label><input type="text" id="fj-setup-cat" placeholder="e.g. American History"></div>
       <div class="f"><label>Clue</label><textarea id="fj-setup-clue" style="width:100%;background:rgba(255,255,255,.07);border:1px solid var(--pb);border-radius:var(--r);color:var(--white);font-family:'Barlow',sans-serif;font-size:.88rem;padding:.5rem .72rem;resize:vertical;min-height:70px;transition:border-color .2s" placeholder="Enter the Final Jeopardy clue…" onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor=''"></textarea></div>
       <div class="f"><label>Correct Answer</label><input type="text" id="fj-setup-ans" placeholder="What is…"></div>
+    </div>
+
+    <!-- Excel upload area -->
+    <div class="card" style="border:2px dashed var(--gold);background:rgba(255,215,0,.04);text-align:center;padding:1.4rem 1.2rem">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:1rem;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);margin-bottom:.6rem">📊 Import from Excel</div>
+      <div style="font-size:.82rem;color:rgba(255,255,255,.5);margin-bottom:1rem">Upload your filled-in template to auto-populate all questions and categories.</div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:.8rem;flex-wrap:wrap">
+        <label style="cursor:pointer">
+          <input type="file" id="xlUpload" accept=".xlsx,.xls" style="display:none" onchange="importExcel(this)">
+          <span class="bm p" style="display:inline-block;padding:.55rem 1.2rem;font-size:.85rem">📂 Upload Excel File</span>
+        </label>
+        <button class="bm s" style="font-size:.85rem" onclick="downloadTemplate()">⬇ Download Template</button>
+      </div>
+      <div id="xl-status" style="margin-top:.7rem;font-size:.8rem;min-height:1.2rem"></div>
     </div>
 
     <div class="sfoot">
@@ -628,6 +644,183 @@ function loadDemo(){
   toast('Demo loaded!');
 }
 
+// ── Excel Import ──
+function xlStatus(msg, ok){
+  var el=document.getElementById('xl-status');
+  if(el){ el.textContent=msg; el.style.color=ok?'#4cde80':'#ff6b6b'; }
+}
+
+function importExcel(input){
+  var file=input.files[0]; if(!file) return;
+  xlStatus('Reading file…', true);
+  var reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      var data=new Uint8Array(e.target.result);
+      var wb=XLSX.read(data,{type:'uint8array'});
+
+      // ── Parse Round 1 ──
+      var ws1=wb.Sheets['Round 1'];
+      if(!ws1){ xlStatus('Sheet "Round 1" not found. Check sheet names match the template.', false); return; }
+      var r1=parseRoundSheet(ws1);
+
+      // ── Parse Double Jeopardy ──
+      var ws2=wb.Sheets['Double Jeopardy'];
+      if(!ws2){ xlStatus('Sheet "Double Jeopardy" not found. Check sheet names match the template.', false); return; }
+      var r2=parseRoundSheet(ws2);
+
+      // ── Parse Final Jeopardy ──
+      var ws3=wb.Sheets['Final Jeopardy'];
+      var fj={cat:'',clue:'',answer:''};
+      if(ws3){
+        fj.cat    = cellVal(ws3,'B4')||'';
+        fj.clue   = cellVal(ws3,'B5')||'';
+        fj.answer = cellVal(ws3,'B6')||'';
+      }
+
+      // ── Validate we got something ──
+      if(!r1.cats.length){ xlStatus('Could not read categories from Round 1 sheet.', false); return; }
+
+      // ── Apply to setup form ──
+      applyRoundData(r1, r2, fj);
+      xlStatus('✓ Imported '+r1.cats.length+' categories, '+r1.clues[0].length+' clues each.', true);
+
+    } catch(err){
+      xlStatus('Error reading file: '+err.message, false);
+      console.error(err);
+    }
+    // Reset file input so same file can be re-uploaded
+    input.value='';
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function cellVal(ws, addr){
+  var cell=ws[addr];
+  if(!cell) return '';
+  return String(cell.v||'').trim();
+}
+
+function parseRoundSheet(ws){
+  // Layout: row 5 = category names (merged pairs: B5, D5, F5, H5, J5)
+  // row 7+ = clues in even cols (B,D,F,H,J), answers in odd cols (C,E,G,I,K)
+  // Cols: B=clue1, C=ans1, D=clue2, E=ans2, F=clue3, G=ans3, H=clue4, I=ans4, J=clue5, K=ans5
+  var CAT_COLS=[1,3,5,7,9]; // 0-indexed: B=1,D=3,F=5,H=7,J=9
+  var cats=[], clues=[], answers=[];
+
+  // Read category names from row 5 (cols B,D,F,H,J = indices 1,3,5,7,9)
+  CAT_COLS.forEach(function(ci){
+    var addr=XLSX.utils.encode_cell({r:4,c:ci}); // row 5 = index 4
+    var val=cellVal(ws,addr);
+    // Skip placeholder text
+    if(val && !val.match(/^Category \d+ Name|^Category \d+$/i)){
+      cats.push(val);
+    } else if(val.match(/^Category \d+$/i)){
+      cats.push(val); // keep generic names
+    } else {
+      cats.push('Category '+(cats.length+1));
+    }
+  });
+
+  // Read clues/answers from rows 7-11 (indices 6-10)
+  for(var ri=0;ri<5;ri++){
+    var rowClues=[], rowAnswers=[];
+    CAT_COLS.forEach(function(ci){
+      var clueAddr =XLSX.utils.encode_cell({r:6+ri, c:ci});
+      var ansAddr  =XLSX.utils.encode_cell({r:6+ri, c:ci+1});
+      rowClues.push(cellVal(ws,clueAddr));
+      rowAnswers.push(cellVal(ws,ansAddr));
+    });
+    clues.push(rowClues);
+    answers.push(rowAnswers);
+  }
+
+  return {cats:cats, clues:clues, answers:answers};
+}
+
+function applyRoundData(r1, r2, fj){
+  var numCats=r1.cats.length;
+  var numRows=r1.clues.length;
+
+  // Set dropdowns
+  var ncSel=document.getElementById('nc');
+  if(ncSel){
+    // Find closest available option
+    var opts=Array.from(ncSel.options).map(o=>+o.value);
+    var closest=opts.reduce((a,b)=>Math.abs(b-numCats)<Math.abs(a-numCats)?b:a);
+    ncSel.value=closest;
+    renderCatsGrid();
+  }
+  var nrSel=document.getElementById('nr');
+  if(nrSel){
+    var opts=Array.from(nrSel.options).map(o=>+o.value);
+    var closest=opts.reduce((a,b)=>Math.abs(b-numRows)<Math.abs(a-numRows)?b:a);
+    nrSel.value=closest;
+  }
+
+  // Fill category names
+  setTimeout(function(){
+    var inputs=document.querySelectorAll('#cats-grid input');
+    r1.cats.forEach(function(cat,i){
+      if(inputs[i]) inputs[i].value=cat;
+    });
+  }, 50);
+
+  // Store clues/answers to be applied when game launches
+  window._xlImport={r1:r1, r2:r2, fj:fj};
+
+  // Fill FJ fields
+  if(fj.cat)    { var el=document.getElementById('fj-setup-cat');  if(el) el.value=fj.cat; }
+  if(fj.clue)   { var el=document.getElementById('fj-setup-clue'); if(el) el.value=fj.clue; }
+  if(fj.answer) { var el=document.getElementById('fj-setup-ans');  if(el) el.value=fj.answer; }
+}
+
+// ── Download Template ──
+function downloadTemplate(){
+  // Base64 encoded minimal redirect — we use a data URL approach
+  // The template is fetched from a bundled base64 string we generate at build time
+  // Since we can't bundle the xlsx here, we generate it on the fly with SheetJS
+  if(typeof XLSX==='undefined'){ toast('SheetJS not loaded yet, try again in a moment'); return; }
+
+  var wb=XLSX.utils.book_new();
+  var NUM_CATS=5, NUM_ROWS=5, BASE=200;
+
+  function makeRoundSheet(mult){
+    var aoa=[];
+    // Row 0: title (skip — just headers)
+    // Row 0: column headers
+    var hdr=['Value'];
+    for(var ci=0;ci<NUM_CATS;ci++){ hdr.push('Category '+(ci+1)+' — Clue', 'Category '+(ci+1)+' — Answer'); }
+    aoa.push(hdr);
+    // Row 1: category names
+    var catRow=['↑ Category Names'];
+    for(var ci=0;ci<NUM_CATS;ci++){ catRow.push('Category '+(ci+1), ''); }
+    aoa.push(catRow);
+    // Data rows
+    for(var ri=0;ri<NUM_ROWS;ri++){
+      var val=BASE*mult*(ri+1);
+      var row=['$'+val.toLocaleString()];
+      for(var ci=0;ci<NUM_CATS;ci++){ row.push('',''); }
+      aoa.push(row);
+    }
+    return XLSX.utils.aoa_to_sheet(aoa);
+  }
+
+  XLSX.utils.book_append_sheet(wb, makeRoundSheet(1), 'Round 1');
+  XLSX.utils.book_append_sheet(wb, makeRoundSheet(2), 'Double Jeopardy');
+
+  var fj=XLSX.utils.aoa_to_sheet([
+    ['Field','Value'],
+    ['Category','e.g. American History'],
+    ['Clue','e.g. This president signed the Emancipation Proclamation.'],
+    ['Correct Answer','e.g. Who is Abraham Lincoln?']
+  ]);
+  XLSX.utils.book_append_sheet(wb, fj, 'Final Jeopardy');
+
+  XLSX.writeFile(wb,'jeopardy-template.xlsx');
+  toast('Template downloaded!');
+}
+
 async function startGame(){
   const key  = document.getElementById('ak').value.trim();
   const room = (document.getElementById('rc').value.trim().toUpperCase()) || rcode();
@@ -638,7 +831,6 @@ async function startGame(){
   const penalty=document.getElementById('wp').value;
 
   const r1cats=Array.from(document.querySelectorAll('#cats-grid input')).map((inp,i)=>inp.value.trim()||`Category ${i+1}`);
-  const r2cats=r1cats.map(c=>`DJ: ${c}`);
   const boards=[[],[]];
   for(let rnd=0;rnd<2;rnd++){
     const mult=rnd===0?1:2;
@@ -654,6 +846,29 @@ async function startGame(){
       if(!placed.has(k)){placed.add(k); boards[rnd][c][r].dailyDouble=true;}
     }
   }
+
+  // Apply Excel-imported clues/answers if present
+  var imp=window._xlImport||null;
+  if(imp){
+    // Override category names from import
+    imp.r1.cats.forEach(function(cat,ci){ if(cat && ci<r1cats.length) r1cats[ci]=cat; });
+    // Apply clues/answers to both rounds
+    [[imp.r1,0],[imp.r2,1]].forEach(function(pair){
+      var data=pair[0], rnd=pair[1];
+      data.clues.forEach(function(rowClues,ri){
+        rowClues.forEach(function(clue,ci){
+          if(boards[rnd][ci] && boards[rnd][ci][ri]){
+            if(clue) boards[rnd][ci][ri].clue=clue;
+            if(data.answers[ri]&&data.answers[ri][ci]) boards[rnd][ci][ri].answer=data.answers[ri][ci];
+          }
+        });
+      });
+    });
+  }
+  // Build R2 category names — use import names if available, else prefix with DJ:
+  var r2cats=r1cats.map(function(cat,i){
+    return (imp&&imp.r2&&imp.r2.cats[i]&&!imp.r2.cats[i].match(/^Category \d+$/))?imp.r2.cats[i]:'DJ: '+cat;
+  });
 
   G={key,room,players:[],scores:{},streaks:{},rows:numRows,baseVal,numDDs,penalty,
      cats:[r1cats,r2cats],boards,round:0,activeId:null,currentClue:null,locked:true,bq:[]};

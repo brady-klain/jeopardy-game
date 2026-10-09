@@ -871,7 +871,7 @@ async function startGame(){
   });
 
   G={key,room,players:[],scores:{},streaks:{},rows:numRows,baseVal,numDDs,penalty,
-     cats:[r1cats,r2cats],boards,round:0,activeId:null,currentClue:null,locked:true,bq:[]};
+     cats:[r1cats,r2cats],boards,round:0,activeId:null,currentClue:null,locked:true,bq:[],lockedOut:new Set(),wrongCount:0};
 
   document.getElementById('rpill').textContent='ROOM: '+room;
 
@@ -973,11 +973,11 @@ function setLock(locked){
   toAll('lock',{locked}); renderBQ();
 }
 function resetRound(){
-  G.bq=[]; toAll('reset',{}); toAll('lock',{locked:false});
+  G.bq=[]; G.lockedOut=new Set(); G.wrongCount=0; toAll('reset',{}); toAll('lock',{locked:false});
   G.locked=false; renderBQ(); toast('Buzzers unlocked');
 }
 function onBuzz(data){
-  if(G.locked||G.bq.find(b=>b.id===data.id)) return;
+  if(G.locked||G.bq.find(b=>b.id===data.id)||G.lockedOut.has(data.id)) return;
   G.bq.push({id:data.id, name:data.name, ts:data.ts||Date.now()});
   G.bq.sort((a,b)=>a.ts-b.ts);
   if(G.bq.length===1){
@@ -1000,6 +1000,7 @@ function updateClueBuzzIndicator(){
   if(!indicator||!nameEl) return;
   if(G.bq.length>0){
     nameEl.textContent=G.bq[0].name;
+    nameEl.style.color='var(--gold)';
     // Force animation replay by removing and re-adding
     indicator.style.display='none';
     void indicator.offsetWidth;
@@ -1100,6 +1101,7 @@ function openClue(c,r){
   document.getElementById('ra').style.display='none';
   document.getElementById('ra').textContent='';
   document.getElementById('clue-buzz-indicator').style.display='none';
+  G.wrongCount=0; G.lockedOut=new Set();
   document.getElementById('ddb').classList.toggle('show',isDD);
   document.getElementById('cmm').textContent=G.cats[rnd][c]+' · '+(isDD?'Daily Double':'$'+cell.value.toLocaleString());
   const cv=document.getElementById('cmv');
@@ -1155,39 +1157,77 @@ function markResult(correct){
   if(!G.currentClue){return;}
   const tileC=G.currentClue.c, tileR=G.currentClue.r;
   const value=getCV();
+  const ap=G.players.find(p=>p.id===G.activeId);
 
-  // Update scores
   if(correct){
+    // ── Correct: award points, close clue, clear tile ──
     G.scores[G.activeId]=(G.scores[G.activeId]||0)+value;
     G.streaks[G.activeId]=(G.streaks[G.activeId]||0)+1;
     G.players.forEach(p=>{if(p.id!==G.activeId)G.streaks[p.id]=0;});
+    if(ap) toAll('score-update',{id:ap.id, score:G.scores[ap.id], correct:true});
+    toast('✓ +$'+value.toLocaleString()+' → '+(ap?ap.name:'player'));
+
+    // Close modal and clear tile
+    G.boards[G.round][tileC][tileR].used=true;
+    G.bq=[];
+    G.lockedOut=new Set();
+    G.wrongCount=0;
+    G.currentClue=null;
+    document.getElementById('co').close();
+    document.getElementById('clue-buzz-indicator').style.display='none';
+    renderBoard();
+    setLock(true);
+    renderSB();
+    renderBQ();
+    checkRoundOver();
+
   } else {
+    // ── Wrong: penalise, lock out this player, reopen buzzing for others ──
     if(G.penalty==='full') G.scores[G.activeId]=(G.scores[G.activeId]||0)-value;
     else if(G.penalty==='half') G.scores[G.activeId]=(G.scores[G.activeId]||0)-Math.floor(value/2);
     G.streaks[G.activeId]=0;
+    if(ap) toAll('score-update',{id:ap.id, score:G.scores[ap.id], correct:false});
+    toast('✗ -$'+(G.penalty==='none'?0:value.toLocaleString())+' → '+(ap?ap.name:'player')+' · Buzzing open for others');
+
+    // Lock out wrong player, increment wrong count
+    G.lockedOut.add(G.activeId);
+    G.wrongCount=(G.wrongCount||0)+1;
+    G.bq=[];
+    G.activeId=null;
+    document.getElementById('asel').value='';
+
+    // Close if 3 wrong answers or all players locked out
+    const eligible=G.players.filter(p=>!G.lockedOut.has(p.id));
+    if(G.wrongCount>=3||eligible.length===0){
+      G.boards[G.round][tileC][tileR].used=true;
+      G.lockedOut=new Set();
+      G.currentClue=null;
+      document.getElementById('co').close();
+      document.getElementById('clue-buzz-indicator').style.display='none';
+      renderBoard();
+      setLock(true);
+      renderSB();
+      renderBQ();
+      checkRoundOver();
+      toast(G.wrongCount>=3?'3 wrong answers — clue closed':'No players left — clue closed');
+      return;
+    }
+
+    // Update buzz indicator to show waiting state
+    const indicator=document.getElementById('clue-buzz-indicator');
+    const nameEl=document.getElementById('clue-buzz-name');
+    if(indicator&&nameEl){
+      nameEl.textContent='Buzzing open…';
+      nameEl.style.color='rgba(255,255,255,0.6)';
+      indicator.style.display='block';
+    }
+
+    // Notify players: wrong player locked out, others can buzz
+    toAll('buzz-reopen',{lockedOut:Array.from(G.lockedOut)});
+    G.locked=false;
+    renderSB();
+    renderBQ();
   }
-
-  // Notify players
-  const ap=G.players.find(p=>p.id===G.activeId);
-  if(ap) toAll('score-update',{id:ap.id, score:G.scores[ap.id], correct});
-  toast((correct?'✓ +':'✗ -')+'$'+value.toLocaleString()+' → '+(ap?ap.name:'player'));
-
-  // Mark tile used in data
-  G.boards[G.round][tileC][tileR].used=true;
-  G.bq=[];
-  G.currentClue=null;
-
-  // 1. Close the modal
-  document.getElementById('co').close();
-
-  // 2. Re-render the board so the tile goes blank
-  renderBoard();
-
-  // 3. Update sidebar and buzz bar
-  setLock(true);
-  renderSB();
-  renderBQ();
-  checkRoundOver();
 }
 function closeClue(){
   document.getElementById('co').close();
@@ -1419,6 +1459,11 @@ async function doJoin(){
     _pChan.subscribe('reset',        ()=> { _myBuzzed=false; setPS(_myLocked?'locked':'ready'); });
     _pChan.subscribe('game-state',   msg=>{ if(msg.data.forId===_myId||!msg.data.forId){ _myLocked=msg.data.locked; setPS(msg.data.locked?'locked':'ready'); }});
     _pChan.subscribe('score-update', msg=>{ if(msg.data.id===_myId){ _myScore=msg.data.score; updatePScore(); if(msg.data.correct===true){setPS('correct');setTimeout(()=>setPS(_myLocked?'locked':'ready'),2000);}else if(msg.data.correct===false){setPS('wrong');setTimeout(()=>setPS(_myLocked?'locked':'ready'),1600);}}});
+    _pChan.subscribe('buzz-reopen', msg=>{
+      const lo=msg.data.lockedOut||[];
+      if(lo.includes(_myId)){ _myLocked=true; _myBuzzed=false; setPS('locked-out'); }
+      else { _myLocked=false; _myBuzzed=false; setPS('ready'); }
+    });
     _pChan.subscribe('fj-start', msg=>{ showFjPlayerWagerPhase(msg.data); });
     _pChan.subscribe('fj-clue',  msg=>{ showFjPlayerAnswerPhase(msg.data); });
 
@@ -1526,6 +1571,7 @@ function setPS(st){
     buzzed:     ['bz','BUZZED!', 'Answer!',            '🔔 You buzzed in!', 'bz', true ],
     correct:    ['ok','✓ CORRECT','Points awarded!',   '✓ Correct!',        'ok', true ],
     wrong:      ['no','✕ WRONG', 'Better luck…',       '✕ Incorrect',       'no', true ],
+    'locked-out':['no','LOCKED OUT','You got it wrong…','🔒 You're locked out','no', true],
   };
   const[cls,l,s,st2,sc,dis]=map[st]||map.locked;
   if(cls) btn.classList.add(cls);

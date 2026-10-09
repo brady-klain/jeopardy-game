@@ -1160,26 +1160,41 @@ function markResult(correct){
   const ap=G.players.find(p=>p.id===G.activeId);
 
   if(correct){
-    // ── Correct: award points, close clue, clear tile ──
+    // ── Correct: award points, show answer briefly, then close ──
     G.scores[G.activeId]=(G.scores[G.activeId]||0)+value;
     G.streaks[G.activeId]=(G.streaks[G.activeId]||0)+1;
     G.players.forEach(p=>{if(p.id!==G.activeId)G.streaks[p.id]=0;});
     if(ap) toAll('score-update',{id:ap.id, score:G.scores[ap.id], correct:true});
     toast('✓ +$'+value.toLocaleString()+' → '+(ap?ap.name:'player'));
 
-    // Close modal and clear tile
-    G.boards[G.round][tileC][tileR].used=true;
-    G.bq=[];
-    G.lockedOut=new Set();
-    G.wrongCount=0;
-    G.currentClue=null;
-    document.getElementById('co').close();
-    document.getElementById('clue-buzz-indicator').style.display='none';
-    renderBoard();
-    setLock(true);
-    renderSB();
-    renderBQ();
-    checkRoundOver();
+    // Show the correct answer in the modal before closing
+    const answerText=G.boards[G.round][tileC][tileR].answer||'';
+    const raEl=document.getElementById('ra');
+    if(answerText && raEl){
+      const safe=answerText.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      raEl.innerHTML='<div style="margin:.6rem 0 .2rem;font-family:\'Barlow Condensed\',sans-serif;font-size:.72rem;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.45)">Correct Answer</div>'
+        +'<div style="font-family:\'Anton\',sans-serif;font-size:1.6rem;color:#4cde80;letter-spacing:.04em;text-shadow:1px 2px 0 rgba(0,0,0,.4)">'+safe+'</div>';
+      raEl.style.display='block';
+      // Hide the correct/wrong buttons while showing answer
+      document.querySelector('.ca').style.visibility='hidden';
+    }
+
+    // Wait 2 seconds so everyone can see the answer, then close
+    setTimeout(function(){
+      document.querySelector('.ca').style.visibility='';
+      G.boards[G.round][tileC][tileR].used=true;
+      G.bq=[];
+      G.lockedOut=new Set();
+      G.wrongCount=0;
+      G.currentClue=null;
+      document.getElementById('co').close();
+      document.getElementById('clue-buzz-indicator').style.display='none';
+      renderBoard();
+      setLock(true);
+      renderSB();
+      renderBQ();
+      checkRoundOver();
+    }, 2000);
 
   } else {
     // ── Wrong: penalise, lock out this player, reopen buzzing for others ──
